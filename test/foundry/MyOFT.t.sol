@@ -60,18 +60,18 @@ contract MyOFTTest is TestHelperOz5 {
         // "bOFT", "bOFT", 
 
         xOFT = OFTInitializableMock(
-            _deployOApp(type(OFTInitializableMock).creationCode, abi.encode(address(endpoints[bEid]), address(this)))
+            _deployOApp(type(OFTInitializableMock).creationCode, abi.encode(address(endpoints[xEid]), address(this)))
         );
+
+        // initialize tokens
+        aOFT.initialize("A_OFT_NAME", "aOFT", initialBalance, uint8(18), address(this));
+        bOFT.initialize("B_OFT_NAME", "bOFT", initialBalance, uint8(18), address(this));
 
         // config and wire the ofts
         address[] memory ofts = new address[](2);
         ofts[0] = address(aOFT);
         ofts[1] = address(bOFT);
         this.wireOApps(ofts);
-
-        // initialize tokens
-        aOFT.initialize("A_OFT_NAME", "aOFT", initialBalance, uint8(18));
-        bOFT.initialize("B_OFT_NAME", "bOFT", initialBalance, uint8(18));
 
         // mint tokens
         aOFT.mint(userA, initialBalance);
@@ -94,7 +94,7 @@ contract MyOFTTest is TestHelperOz5 {
         assertEq(xOFT.symbol(), "");
         assertEq(xOFT.totalSupply(), uint256(0));
 
-        xOFT.initialize("X_OFT_NAME", "xOFT", uint256(1000), uint8(18));
+        xOFT.initialize("X_OFT_NAME", "xOFT", uint256(1000), uint8(18), address(this));
         
         assertEq(xOFT.name(), "X_OFT_NAME");
         assertEq(xOFT.symbol(), "xOFT");

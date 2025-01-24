@@ -6,7 +6,6 @@ import { OFTInitializable } from "./OFTInitializable.sol";
 
 contract MyOFTTokenV1 is OFTInitializable {
     constructor(
-        address _lzEndpoint,
-        address _delegate
-    ) OFTInitializable(_lzEndpoint, _delegate) Ownable(_delegate) {}
+        address _lzEndpoint
+    ) OFTInitializable(_lzEndpoint) {}
 }

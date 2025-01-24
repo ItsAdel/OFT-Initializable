@@ -2,25 +2,37 @@
 
 pragma solidity ^0.8.20;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-
-import { OApp, Origin } from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
-import { OAppOptionsType3 } from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OAppOptionsType3.sol";
+import { OAppUpgradeable, Origin } from "@layerzerolabs/oapp-evm-upgradeable/contracts/oapp/OAppUpgradeable.sol";
+import { OAppOptionsType3Upgradeable } from "@layerzerolabs/oapp-evm-upgradeable/contracts/oapp/libs/OAppOptionsType3Upgradeable.sol";
 import { IOAppMsgInspector } from "@layerzerolabs/oapp-evm/contracts/oapp/interfaces/IOAppMsgInspector.sol";
 
-import { OAppPreCrimeSimulator } from "@layerzerolabs/oapp-evm/contracts/precrime/OAppPreCrimeSimulator.sol";
+import { OAppPreCrimeSimulatorUpgradeable } from "@layerzerolabs/oapp-evm-upgradeable/contracts/precrime/OAppPreCrimeSimulatorUpgradeable.sol";
 
 import { IOFT, SendParam, OFTLimit, OFTReceipt, OFTFeeDetail, MessagingReceipt, MessagingFee } from "@layerzerolabs/oft-evm/contracts/interfaces/IOFT.sol";
 import { OFTMsgCodec } from "@layerzerolabs/oft-evm/contracts/libs/OFTMsgCodec.sol";
 import { OFTComposeMsgCodec } from "@layerzerolabs/oft-evm/contracts/libs/OFTComposeMsgCodec.sol";
 
 /**
- * @title OFTCoreInitializable
+ * @title OFTCore
  * @dev Abstract contract for the OftChain (OFT) token.
  */
-abstract contract OFTCoreInitializable is IOFT, OApp, OAppPreCrimeSimulator, OAppOptionsType3 {
+abstract contract OFTCoreInitializable is
+    IOFT,
+    OAppUpgradeable,
+    OAppPreCrimeSimulatorUpgradeable,
+    OAppOptionsType3Upgradeable
+{
     using OFTMsgCodec for bytes;
     using OFTMsgCodec for bytes32;
+
+    struct OFTCoreStorage {
+        // Address of an optional contract to inspect both 'message' and 'options'
+        address msgInspector;
+    }
+
+    // keccak256(abi.encode(uint256(keccak256("layerzerov2.storage.oftcore")) - 1)) & ~bytes32(uint256(0xff))
+    bytes32 private constant OFT_CORE_STORAGE_LOCATION =
+        0x41db8a78b0206aba5c54bcbfc2bda0d84082a84eb88e680379a57b9e9f653c00;
 
     // @notice Provides a conversion rate when swapping between denominations of SD and LD
     //      - shareDecimals == SD == shared Decimals
@@ -44,25 +56,19 @@ abstract contract OFTCoreInitializable is IOFT, OApp, OAppPreCrimeSimulator, OAp
     uint16 public constant SEND = 1;
     uint16 public constant SEND_AND_CALL = 2;
 
-    // Address of an optional contract to inspect both 'message' and 'options'
-    address public msgInspector;
     event MsgInspectorSet(address inspector);
+
+    function _getOFTCoreStorage() internal pure returns (OFTCoreStorage storage $) {
+        assembly {
+            $.slot := OFT_CORE_STORAGE_LOCATION
+        }
+    }
 
     /**
      * @dev Constructor.
      * @param _endpoint The address of the LayerZero endpoint.
-     * @param _delegate The delegate capable of making OApp configurations inside of the endpoint.
      */
-    constructor(address _endpoint, address _delegate) OApp(_endpoint, _delegate) {}
-
-    /**
-     * @dev Initialize deimals of the token.
-     * @param _localDecimals The decimals of the token on the local chain (this chain).
-     **/
-    function __OFTCore_init(uint8 _localDecimals) internal {
-        if (_localDecimals < sharedDecimals()) revert InvalidLocalDecimals();
-        _setDecimalConversionRate(10 ** (_localDecimals - sharedDecimals()));
-    }
+    constructor(address _endpoint) OAppUpgradeable(_endpoint) {}
 
     /**
      * @dev Private function to set the decimal conversion rate (one-time only).
@@ -96,6 +102,38 @@ abstract contract OFTCoreInitializable is IOFT, OApp, OAppPreCrimeSimulator, OAp
     }
 
     /**
+     * @dev Initialize deimals of the token.
+     * @param _localDecimals The decimals of the token on the local chain (this chain).
+     **/
+    function __decimals_init(uint8 _localDecimals) internal {
+        if (_localDecimals < sharedDecimals()) revert InvalidLocalDecimals();
+        _setDecimalConversionRate(10 ** (_localDecimals - sharedDecimals()));
+    }
+
+    /**
+     * @dev Initializes the OFTCore contract.
+     * @param _delegate The delegate capable of making OApp configurations inside of the endpoint.
+     * @param _localDecimals The decimals of the token on the local chain (this chain).
+     *
+     * @dev The delegate typically should be set as the owner of the contract.
+     * @dev Ownable is not initialized here on purpose. It should be initialized in the child contract to
+     * accommodate the different version of Ownable.
+     */
+    function __OFTCore_init(address _delegate, uint8 _localDecimals) internal onlyInitializing {
+        __decimals_init(_localDecimals);
+        __OApp_init(_delegate);
+        __OAppPreCrimeSimulator_init();
+        __OAppOptionsType3_init();
+    }
+
+    function __OFTCore_init_unchained() internal onlyInitializing {}
+
+    function msgInspector() public view returns (address) {
+        OFTCoreStorage storage $ = _getOFTCoreStorage();
+        return $.msgInspector;
+    }
+
+    /**
      * @dev Retrieves the shared decimals of the OFT.
      * @return The shared decimals of the OFT.
      *
@@ -105,7 +143,7 @@ abstract contract OFTCoreInitializable is IOFT, OApp, OAppPreCrimeSimulator, OAp
      * For tokens exceeding this totalSupply(), they will need to override the sharedDecimals function with something smaller.
      * ie. 4 sharedDecimals would be 1,844,674,407,370,955.1615
      */
-    function sharedDecimals() public view virtual returns (uint8) {
+    function sharedDecimals() public pure virtual returns (uint8) {
         return 6;
     }
 
@@ -117,12 +155,13 @@ abstract contract OFTCoreInitializable is IOFT, OApp, OAppPreCrimeSimulator, OAp
      * @dev Set it to address(0) to disable it, or set it to a contract address to enable it.
      */
     function setMsgInspector(address _msgInspector) public virtual onlyOwner {
-        msgInspector = _msgInspector;
+        OFTCoreStorage storage $ = _getOFTCoreStorage();
+        $.msgInspector = _msgInspector;
         emit MsgInspectorSet(_msgInspector);
     }
 
     /**
-     * @notice Provides the fee breakdown and settings data for an OFT. Unused in the default implementation.
+     * @notice Provides a quote for OFT-related operations.
      * @param _sendParam The parameters for the send operation.
      * @return oftLimit The OFT limit information.
      * @return oftFeeDetails The details of OFT fees.
@@ -137,7 +176,7 @@ abstract contract OFTCoreInitializable is IOFT, OApp, OAppPreCrimeSimulator, OAp
         returns (OFTLimit memory oftLimit, OFTFeeDetail[] memory oftFeeDetails, OFTReceipt memory oftReceipt)
     {
         uint256 minAmountLD = 0; // Unused in the default implementation.
-        uint256 maxAmountLD = IERC20(this.token()).totalSupply(); // Unused in the default implementation.
+        uint256 maxAmountLD = type(uint64).max; // Unused in the default implementation.
         oftLimit = OFTLimit(minAmountLD, maxAmountLD);
 
         // Unused in the default implementation; reserved for future complex fee details.
@@ -200,29 +239,6 @@ abstract contract OFTCoreInitializable is IOFT, OApp, OAppPreCrimeSimulator, OAp
         MessagingFee calldata _fee,
         address _refundAddress
     ) external payable virtual returns (MessagingReceipt memory msgReceipt, OFTReceipt memory oftReceipt) {
-        return _send(_sendParam, _fee, _refundAddress);
-    }
-
-    /**
-     * @dev Internal function to execute the send operation.
-     * @param _sendParam The parameters for the send operation.
-     * @param _fee The calculated fee for the send() operation.
-     *      - nativeFee: The native fee.
-     *      - lzTokenFee: The lzToken fee.
-     * @param _refundAddress The address to receive any excess funds.
-     * @return msgReceipt The receipt for the send operation.
-     * @return oftReceipt The OFT receipt information.
-     *
-     * @dev MessagingReceipt: LayerZero msg receipt
-     *  - guid: The unique identifier for the sent message.
-     *  - nonce: The nonce of the sent message.
-     *  - fee: The LayerZero fee incurred for the message.
-     */
-    function _send(
-        SendParam calldata _sendParam,
-        MessagingFee calldata _fee,
-        address _refundAddress
-    ) internal virtual returns (MessagingReceipt memory msgReceipt, OFTReceipt memory oftReceipt) {
         // @dev Applies the token transfers regarding this send() operation.
         // - amountSentLD is the amount in local decimals that was ACTUALLY sent/debited from the sender.
         // - amountReceivedLD is the amount in local decimals that will be received/credited to the recipient on the remote OFT instance.
@@ -269,9 +285,11 @@ abstract contract OFTCoreInitializable is IOFT, OApp, OAppPreCrimeSimulator, OAp
         // @dev Combine the callers _extraOptions with the enforced options via the OAppOptionsType3.
         options = combineOptions(_sendParam.dstEid, msgType, _sendParam.extraOptions);
 
+        OFTCoreStorage storage $ = _getOFTCoreStorage();
+
         // @dev Optionally inspect the message and options depending if the OApp owner has set a msg inspector.
         // @dev If it fails inspection, needs to revert in the implementation. ie. does not rely on return boolean
-        address inspector = msgInspector; // caches the msgInspector to avoid potential double storage read
+        address inspector = $.msgInspector; // caches the msgInspector to avoid potential double storage read
         if (inspector != address(0)) IOAppMsgInspector(inspector).inspect(message, options);
     }
 
@@ -352,7 +370,7 @@ abstract contract OFTCoreInitializable is IOFT, OApp, OAppPreCrimeSimulator, OAp
      * @dev Enables OAppPreCrimeSimulator to check whether a potential Inbound Packet is from a trusted source.
      */
     function isPeer(uint32 _eid, bytes32 _peer) public view virtual override returns (bool) {
-        return peers[_eid] == _peer;
+        return peers(_eid) == _peer;
     }
 
     /**
@@ -413,7 +431,7 @@ abstract contract OFTCoreInitializable is IOFT, OApp, OAppPreCrimeSimulator, OAp
 
     /**
      * @dev Internal function to perform a debit operation.
-     * @param _from The address to debit.
+     * @param _from The address to debit from.
      * @param _amountLD The amount to send in local decimals.
      * @param _minAmountLD The minimum amount to send in local decimals.
      * @param _dstEid The destination endpoint ID.
