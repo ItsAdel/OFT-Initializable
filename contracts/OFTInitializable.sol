@@ -114,26 +114,23 @@ abstract contract OFTInitializable is ERC20, OFTCoreInitializable {
     address private _initializer;
     /**
      * @dev Constructor for the OFT contract.
-     * @param _lzEndpoint The LayerZero endpoint address.
      */
-    constructor(
-        address _lzEndpoint
-    ) ERC20() OFTCoreInitializable(_lzEndpoint) {
+    constructor() ERC20() OFTCoreInitializable() {
         _initializer = msg.sender;
     }
 
-    function initialize(string memory name_, string memory symbol_, uint256 initialSupply_, uint8 decimals_, address _delegate) external initializer
+    function initialize(string memory name_, string memory symbol_, uint256 initialSupply_, uint8 decimals_, address _lzEndpoint, address _delegate) external initializer
     {
         require(_initializer == msg.sender, "Contract should be initialized by initializer");
-        __OFT_init(name_, symbol_, initialSupply_, decimals_, _delegate);
+        __OFT_init(name_, symbol_, initialSupply_, decimals_, _lzEndpoint, _delegate);
     }
 
-    function __OFT_init(string memory _name, string memory _symbol, uint256 _initialSupply, uint8 _localDecimals, address _delegate) internal onlyInitializing {
+    function __OFT_init(string memory _name, string memory _symbol, uint256 _initialSupply, uint8 _localDecimals, address _lzEndpoint, address _delegate) internal onlyInitializing {
         __Ownable_init(_delegate);
         // Initialize ERC20
         __ERC20_init(_name, _symbol, _initialSupply, _localDecimals, _delegate);
         // Initialize OFTCore with local decimals
-        __OFTCore_init(_delegate, _localDecimals);
+        __OFTCore_init(_lzEndpoint, _delegate, _localDecimals);
     }
 
     function transfer(address to, uint256 amount) external override

@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.20;
 
-import { OAppUpgradeable, Origin } from "@layerzerolabs/oapp-evm-upgradeable/contracts/oapp/OAppUpgradeable.sol";
+import { OAppInitializable, Origin } from "./OApp/OAppInitializable.sol";
 import { OAppOptionsType3Upgradeable } from "@layerzerolabs/oapp-evm-upgradeable/contracts/oapp/libs/OAppOptionsType3Upgradeable.sol";
 import { IOAppMsgInspector } from "@layerzerolabs/oapp-evm/contracts/oapp/interfaces/IOAppMsgInspector.sol";
 
@@ -18,7 +18,7 @@ import { OFTComposeMsgCodec } from "@layerzerolabs/oft-evm/contracts/libs/OFTCom
  */
 abstract contract OFTCoreInitializable is
     IOFT,
-    OAppUpgradeable,
+    OAppInitializable,
     OAppPreCrimeSimulatorUpgradeable,
     OAppOptionsType3Upgradeable
 {
@@ -66,9 +66,8 @@ abstract contract OFTCoreInitializable is
 
     /**
      * @dev Constructor.
-     * @param _endpoint The address of the LayerZero endpoint.
      */
-    constructor(address _endpoint) OAppUpgradeable(_endpoint) {}
+    constructor() OAppInitializable() {}
 
     /**
      * @dev Private function to set the decimal conversion rate (one-time only).
@@ -119,9 +118,9 @@ abstract contract OFTCoreInitializable is
      * @dev Ownable is not initialized here on purpose. It should be initialized in the child contract to
      * accommodate the different version of Ownable.
      */
-    function __OFTCore_init(address _delegate, uint8 _localDecimals) internal onlyInitializing {
+    function __OFTCore_init(address _lzEndpoint, address _delegate, uint8 _localDecimals) internal onlyInitializing {
         __decimals_init(_localDecimals);
-        __OApp_init(_delegate);
+        __OApp_init(_lzEndpoint, _delegate);
         __OAppPreCrimeSimulator_init();
         __OAppOptionsType3_init();
     }

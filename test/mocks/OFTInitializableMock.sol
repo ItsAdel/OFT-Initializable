@@ -7,8 +7,7 @@ import { SendParam } from "@layerzerolabs/oft-evm/contracts/OFTCore.sol";
 
 contract OFTInitializableMock is OFTInitializable {
     constructor(
-        address _lzEndpoint
-    ) OFTInitializable(_lzEndpoint) {}
+    ) OFTInitializable() {}
 
     function mint(address _to, uint256 _amount) public {
         _mint(_to, _amount);

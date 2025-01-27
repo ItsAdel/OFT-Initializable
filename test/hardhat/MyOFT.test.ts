@@ -50,14 +50,14 @@ describe('MyOFT Test', function () {
         mockEndpointV2B = await EndpointV2Mock.deploy(eidB)
 
         // Deploying two instances of MyOFT contract with different identifiers and linking them to the mock LZEndpoint
-        myOFTA = await MyOFT.deploy(mockEndpointV2A.address, ownerA.address)
-        myOFTB = await MyOFT.deploy(mockEndpointV2B.address, ownerB.address)
+        myOFTA = await MyOFT.deploy()
+        myOFTB = await MyOFT.deploy()
 
         const initialAmount = ethers.utils.parseEther('100')
 
         // Initialize the contracts
-        myOFTA.initialize('aOFT', 'aOFT', initialAmount, 18)
-        myOFTB.initialize('bOFT', 'bOFT', initialAmount, 18)
+        myOFTA.initialize('aOFT', 'aOFT', initialAmount, 18, mockEndpointV2A.address, ownerA.address)
+        myOFTB.initialize('bOFT', 'bOFT', initialAmount, 18, mockEndpointV2B.address, ownerB.address)
 
         // Setting destination endpoints in the LZEndpoint mock for each MyOFT instance
         await mockEndpointV2A.setDestLzEndpoint(myOFTB.address, mockEndpointV2B.address)
@@ -103,6 +103,6 @@ describe('MyOFT Test', function () {
         // Asserting that the final balances are as expected after the send operation
         // initialize also minted the initial amount to ownerA
         expect(finalBalanceA).eql(initialAmount.add(initialAmount).sub(tokensToSend))
-        expect(finalBalanceB).eql(tokensToSend)
+        expect(finalBalanceB).eql(tokensToSend.add(initialAmount))
     })
 })

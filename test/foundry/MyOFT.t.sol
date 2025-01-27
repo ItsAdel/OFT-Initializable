@@ -48,24 +48,24 @@ contract MyOFTTest is TestHelperOz5 {
         setUpEndpoints(2, LibraryType.UltraLightNode);
 
         aOFT = OFTInitializableMock(
-            _deployOApp(type(OFTInitializableMock).creationCode, abi.encode(address(endpoints[aEid]), address(this)))
+            _deployOApp(type(OFTInitializableMock).creationCode, "")
         );
 
         // "aOFT", "aOFT",
 
         bOFT = OFTInitializableMock(
-            _deployOApp(type(OFTInitializableMock).creationCode, abi.encode(address(endpoints[bEid]), address(this)))
+            _deployOApp(type(OFTInitializableMock).creationCode, "")
         );
 
         // "bOFT", "bOFT", 
 
         xOFT = OFTInitializableMock(
-            _deployOApp(type(OFTInitializableMock).creationCode, abi.encode(address(endpoints[xEid]), address(this)))
+            _deployOApp(type(OFTInitializableMock).creationCode, "")
         );
 
         // initialize tokens
-        aOFT.initialize("A_OFT_NAME", "aOFT", initialBalance, uint8(18), address(this));
-        bOFT.initialize("B_OFT_NAME", "bOFT", initialBalance, uint8(18), address(this));
+        aOFT.initialize("A_OFT_NAME", "aOFT", initialBalance, uint8(18), address(endpoints[aEid]), address(this));
+        bOFT.initialize("B_OFT_NAME", "bOFT", initialBalance, uint8(18), address(endpoints[bEid]), address(this));
 
         // config and wire the ofts
         address[] memory ofts = new address[](2);
@@ -94,7 +94,7 @@ contract MyOFTTest is TestHelperOz5 {
         assertEq(xOFT.symbol(), "");
         assertEq(xOFT.totalSupply(), uint256(0));
 
-        xOFT.initialize("X_OFT_NAME", "xOFT", uint256(1000), uint8(18), address(this));
+        xOFT.initialize("X_OFT_NAME", "xOFT", uint256(1000), uint8(18), address(endpoints[xEid]), address(this));
         
         assertEq(xOFT.name(), "X_OFT_NAME");
         assertEq(xOFT.symbol(), "xOFT");

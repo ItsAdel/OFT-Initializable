@@ -5,7 +5,5 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { OFTInitializable } from "./OFTInitializable.sol";
 
 contract MyOFTTokenV1 is OFTInitializable {
-    constructor(
-        address _lzEndpoint
-    ) OFTInitializable(_lzEndpoint) {}
+    constructor() OFTInitializable() {}
 }
